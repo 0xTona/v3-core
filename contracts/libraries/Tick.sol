@@ -16,6 +16,9 @@ library Tick {
     // info stored for each initialized individual tick
     struct Info {
         // the total position liquidity that references this tick
+        //@note
+        //Follow-up
+        //  difference from liquidityNet?
         uint128 liquidityGross;
         // amount of net liquidity added (subtracted) when tick is crossed from left to right (right to left),
         int128 liquidityNet;

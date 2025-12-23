@@ -21,9 +21,25 @@ library TickMath {
     /// @return sqrtPriceX96 A Fixed point Q64.96 number representing the sqrt of the ratio of the two assets (token1/token0)
     /// at the given tick
     function getSqrtRatioAtTick(int24 tick) internal pure returns (uint160 sqrtPriceX96) {
+        //@note
+        //Intension
+        //  absTick = |tick|
         uint256 absTick = tick < 0 ? uint256(-int256(tick)) : uint256(int256(tick));
+        //@note
+        //Intension
+        //  |tick| <= MAX_TICK
+        //Intension
+        //  -887272 <= tick <= 887272
         require(absTick <= uint256(MAX_TICK), 'T');
 
+        //@note
+        //Intension
+        //  absTick
+        //  00..1..
+        //  -------
+        //  00....0 -> ratio = 2^128                     (init)
+        //  00....1 -> ratio = sqrt(1.0001^-1) * 2^128    (init)
+        //  00..1.. -> ratio *= sqrt(1.0001^-i) * 2^128 / 2^128  (then multiply)
         uint256 ratio = absTick & 0x1 != 0 ? 0xfffcb933bd6fad37aa2d162d1a594001 : 0x100000000000000000000000000000000;
         if (absTick & 0x2 != 0) ratio = (ratio * 0xfff97272373d413259a46990580e213a) >> 128;
         if (absTick & 0x4 != 0) ratio = (ratio * 0xfff2e50f5f656932ef12357cf3c7fdcc) >> 128;
@@ -45,11 +61,21 @@ library TickMath {
         if (absTick & 0x40000 != 0) ratio = (ratio * 0x2216e584f5fa1ea926041bedfe98) >> 128;
         if (absTick & 0x80000 != 0) ratio = (ratio * 0x48a170391f7dc42444e8fa2) >> 128;
 
+        //@note
+        //Intension
+        //  ratio = sqrt(1.0001^-tick) * 2^128
+        //  if tick > 0:
+        //    ratio = 1 / ratio = sqrt(1.0001^tick) * 2^128
         if (tick > 0) ratio = type(uint256).max / ratio;
 
         // this divides by 1<<32 rounding up to go from a Q128.128 to a Q128.96.
         // we then downcast because we know the result always fits within 160 bits due to our tick input constraint
         // we round up in the division so getTickAtSqrtRatio of the output price is always consistent
+        //@note
+        //Intension
+        //  sqrtPriceX96 = ceil(ratio / 2^32) = sqrt(1.0001^tick) * 2^96
+        //Audit
+        //  up
         sqrtPriceX96 = uint160((ratio >> 32) + (ratio % (1 << 32) == 0 ? 0 : 1));
     }
 
@@ -60,7 +86,16 @@ library TickMath {
     /// @return tick The greatest tick for which the ratio is less than or equal to the input ratio
     function getTickAtSqrtRatio(uint160 sqrtPriceX96) internal pure returns (int24 tick) {
         // second inequality must be < because the price can never reach the price at the max tick
+        //@note
+        //Assumption
+        //  sqrtPriceX96 will never be less than MIN_SQRT_RATIO || greater than MAX_SQRT_RATIO
         require(sqrtPriceX96 >= MIN_SQRT_RATIO && sqrtPriceX96 < MAX_SQRT_RATIO, 'R');
+        //@note
+        //Intension
+        //  sqrtPriceX96 = value * 2^96
+        //  ->     ratio = value * 2^128
+        //Follow-up
+        //  why cast?
         uint256 ratio = uint256(sqrtPriceX96) << 32;
 
         uint256 r = ratio;
