@@ -61,8 +61,21 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         // the most-recently updated index of the observations array
         uint16 observationIndex;
         // the current maximum number of observations that are being stored
+        //@note
+        //Intension
+        //  Number of activated observations
+        //Assumption
+        //  observationCardinality <= 65535
         uint16 observationCardinality;
         // the next maximum number of observations to store, triggered in observations.write
+        //@note
+        //Intension
+        //  Preallocated observations but not activated yet (observation.initialized == false)
+        //  Allocate new observation slots is expensive (20k gas/slot) but writing into preallocated slots is cheap (5k gas/slot)
+        //      initialize(): 1 observation as default
+        //      increaseObservationCardinalityNext(): increase number of observations if someone's willing to pay gas
+        //Assumption
+        //  observationCardinalityNext <= 65535
         uint16 observationCardinalityNext;
         // the current protocol fee as a percentage of the swap fee taken on withdrawal
         // represented as an integer denominator (1/x)%
@@ -261,10 +274,15 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         uint16 observationCardinalityNext
     ) external override lock noDelegateCall {
         uint16 observationCardinalityNextOld = slot0.observationCardinalityNext; // for the event
+        //@note
+        //Intension
+        //  preallocate observation slots if needed
         uint16 observationCardinalityNextNew = observations.grow(
             observationCardinalityNextOld,
             observationCardinalityNext
         );
+        //@note
+        //  slot0.observationCardinalityNext = max(slot0.observationCardinalityNext, observationCardinalityNext)
         slot0.observationCardinalityNext = observationCardinalityNextNew;
         if (observationCardinalityNextOld != observationCardinalityNextNew)
             emit IncreaseObservationCardinalityNext(observationCardinalityNextOld, observationCardinalityNextNew);
@@ -275,7 +293,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
     function initialize(uint160 sqrtPriceX96) external override {
         //@note
         //Intension
-        //  sqrtPriceX96 = 0 as uninitialized flag
+        //  sqrtPriceX96 == 0 as uninitialized flag
         //Assumption
         //  sqrtPriceX96 will never be 0
         require(slot0.sqrtPriceX96 == 0, 'AI');

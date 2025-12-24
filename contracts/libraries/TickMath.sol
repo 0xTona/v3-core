@@ -84,18 +84,28 @@ library TickMath {
     /// ever return.
     /// @param sqrtPriceX96 The sqrt ratio for which to compute the tick as a Q64.96
     /// @return tick The greatest tick for which the ratio is less than or equal to the input ratio
+    //@note
+    //Intension
+    //  sqrtPriceX96 = sqrt(1.0001^tick) * 2^96
+    //  tick = log_1.0001((sqrtPriceX96 / 2^96)^2)
+    //  tick = 2 * log_1.0001(sqrtPriceX96 / 2^96)
+    //  tick = 2 * log_2(sqrtPriceX96 / 2^96) / log_2(1.0001)
+    //  tick is interger -> floor
+    //  tick = floor(2 * log_2(sqrtPriceX96 / 2^96) / log_2(1.0001))
+    //Follow-up
+    //  algorithm?
+    //Assumption
+    //  MIN_SQRT_RATIO <= sqrtPriceX96 < MAX_SQRT_RATIO
+    //  Down to neareast tick
     function getTickAtSqrtRatio(uint160 sqrtPriceX96) internal pure returns (int24 tick) {
         // second inequality must be < because the price can never reach the price at the max tick
-        //@note
-        //Assumption
-        //  sqrtPriceX96 will never be less than MIN_SQRT_RATIO || greater than MAX_SQRT_RATIO
         require(sqrtPriceX96 >= MIN_SQRT_RATIO && sqrtPriceX96 < MAX_SQRT_RATIO, 'R');
         //@note
         //Intension
         //  sqrtPriceX96 = value * 2^96
         //  ->     ratio = value * 2^128
         //Follow-up
-        //  why cast?
+        //  A) why cast? -> for yul operations
         uint256 ratio = uint256(sqrtPriceX96) << 32;
 
         uint256 r = ratio;
