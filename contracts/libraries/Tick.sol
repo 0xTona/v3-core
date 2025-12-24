@@ -123,15 +123,32 @@ library Tick {
         bool upper,
         uint128 maxLiquidity
     ) internal returns (bool flipped) {
+        //@note
+        //Intension
+        //  Reference to ticks[tick]
         Tick.Info storage info = self[tick];
 
+        //@note
+        //Intension
+        //  snapshot of ticks[tick].liquidityGross
         uint128 liquidityGrossBefore = info.liquidityGross;
+        //@note
+        //Intension
+        //  liquidityGrossAfter = liquidityGrossBefore + liquidityDelta
+        //  revert if underflow/overflow
         uint128 liquidityGrossAfter = LiquidityMath.addDelta(liquidityGrossBefore, liquidityDelta);
 
         require(liquidityGrossAfter <= maxLiquidity, 'LO');
 
+        //@note
+        //Intension
+        //  flipped: tick.initialized changes when tick.liquidityGross: 0 -> non-0 or non-0 -> 0
+        //      (liquidityGrossAfter == 0): go to 0
+        //      (liquidityGrossBefore == 0): from 0
         flipped = (liquidityGrossAfter == 0) != (liquidityGrossBefore == 0);
 
+        //@note
+        //Follow-up
         if (liquidityGrossBefore == 0) {
             // by convention, we assume that all growth before a tick was initialized happened _below_ the tick
             if (tick <= tickCurrent) {
@@ -147,6 +164,10 @@ library Tick {
         info.liquidityGross = liquidityGrossAfter;
 
         // when the lower (upper) tick is crossed left to right (right to left), liquidity must be added (removed)
+        //@note
+        //Intension
+        //  ___tickLower___tickUpper___
+        //  ___+delta_________-delta___
         info.liquidityNet = upper
             ? int256(info.liquidityNet).sub(liquidityDelta).toInt128()
             : int256(info.liquidityNet).add(liquidityDelta).toInt128();

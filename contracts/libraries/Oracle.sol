@@ -33,6 +33,22 @@ library Oracle {
         int24 tick,
         uint128 liquidity
     ) private pure returns (Observation memory) {
+        //@note
+        //Intension
+        //  timeElapsed = blockTimestamp - last.blockTimestamp
+        //  Transform new observation:
+        //    Update time:
+        //        blockTimestamp = blockTimestamp
+        //    Update accumulators:
+        //        tickCumulative += tick * timeElapsed
+        //        secondsPerLiquidityCumulativeX128 += (timeElapsed * 2^128) / max(1, liquidity)
+        //    Activate observation
+        //        initialized = true
+        //Assumption
+        //  blockTimestamp >= last.blockTimestamp (prevent overflow)
+        //Audit
+        //  max(1, liquidity) -> No liquidity case?
+        //  Chain's timestamp behavior
         uint32 delta = blockTimestamp - last.blockTimestamp;
         return
             Observation({
@@ -263,8 +279,18 @@ library Oracle {
         uint128 liquidity,
         uint16 cardinality
     ) internal view returns (int56 tickCumulative, uint160 secondsPerLiquidityCumulativeX128) {
+        //@note
+        //Intension
+        //  secondsAgo == 0 -> use most recent observation
+        //  secondsAgo > 0  -> use older observation
         if (secondsAgo == 0) {
+            //@note
+            //Intension
+            //  snapshot of most recent observation
             Observation memory last = self[index];
+            //@note
+            //Intension
+            //  if last observation is not from this block, simulate an up-to-date observation
             if (last.blockTimestamp != time) last = transform(last, time, tick, liquidity);
             return (last.tickCumulative, last.secondsPerLiquidityCumulativeX128);
         }

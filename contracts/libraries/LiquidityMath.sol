@@ -8,6 +8,16 @@ library LiquidityMath {
     /// @param y The delta by which liquidity should be changed
     /// @return z The liquidity delta
     function addDelta(uint128 x, int128 y) internal pure returns (uint128 z) {
+        //@note
+        //Intension
+        //  z = x + y
+        //    y < 0 -> z = x - |y| -> underflow check (z < x)
+        //    y >=0 -> z = x + y   -> overflow check (z >= x)
+        //Follow-up
+        //  A) When require() fail?
+        //     Use solidity >=0.5.0 => don't have default check
+        //Audit
+        //  y = type(int128).min -> can't negate
         if (y < 0) {
             require((z = x - uint128(-y)) < x, 'LS');
         } else {

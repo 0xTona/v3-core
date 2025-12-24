@@ -33,6 +33,9 @@ library Position {
         int24 tickLower,
         int24 tickUpper
     ) internal view returns (Position.Info storage position) {
+        //@note
+        //Assumption
+        // Each user can have many positions with different tick ranges
         position = self[keccak256(abi.encodePacked(owner, tickLower, tickUpper))];
     }
 
@@ -58,22 +61,12 @@ library Position {
         }
 
         // calculate accumulated fees
-        uint128 tokensOwed0 =
-            uint128(
-                FullMath.mulDiv(
-                    feeGrowthInside0X128 - _self.feeGrowthInside0LastX128,
-                    _self.liquidity,
-                    FixedPoint128.Q128
-                )
-            );
-        uint128 tokensOwed1 =
-            uint128(
-                FullMath.mulDiv(
-                    feeGrowthInside1X128 - _self.feeGrowthInside1LastX128,
-                    _self.liquidity,
-                    FixedPoint128.Q128
-                )
-            );
+        uint128 tokensOwed0 = uint128(
+            FullMath.mulDiv(feeGrowthInside0X128 - _self.feeGrowthInside0LastX128, _self.liquidity, FixedPoint128.Q128)
+        );
+        uint128 tokensOwed1 = uint128(
+            FullMath.mulDiv(feeGrowthInside1X128 - _self.feeGrowthInside1LastX128, _self.liquidity, FixedPoint128.Q128)
+        );
 
         // update the position
         if (liquidityDelta != 0) self.liquidity = liquidityNext;

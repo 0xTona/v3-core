@@ -140,6 +140,9 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
 
     /// @dev Common checks for valid tick inputs.
     function checkTicks(int24 tickLower, int24 tickUpper) private pure {
+        //@note
+        //Assumption
+        //  -887272 <= tickLower < tickUpper <= 887272
         require(tickLower < tickUpper, 'TLU');
         require(tickLower >= TickMath.MIN_TICK, 'TLM');
         require(tickUpper <= TickMath.MAX_TICK, 'TUM');
@@ -147,6 +150,9 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
 
     /// @dev Returns the block timestamp truncated to 32 bits, i.e. mod 2**32. This method is overridden in tests.
     function _blockTimestamp() internal view virtual returns (uint32) {
+        //@note
+        //Assumption
+        //  block.timestamp % (2**32) (~136 years)
         return uint32(block.timestamp); // truncation is desired
     }
 
@@ -330,11 +336,17 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
     /// @return position a storage pointer referencing the position with the given owner and tick range
     /// @return amount0 the amount of token0 owed to the pool, negative if the pool should pay the recipient
     /// @return amount1 the amount of token1 owed to the pool, negative if the pool should pay the recipient
+    //@note
+    //Follow-up
+    //  storage default? (Position.Info storage position)
     function _modifyPosition(
         ModifyPositionParams memory params
     ) private noDelegateCall returns (Position.Info storage position, int256 amount0, int256 amount1) {
         checkTicks(params.tickLower, params.tickUpper);
 
+        //@note
+        //Assumption
+        //  snapshot of slot0 before modification
         Slot0 memory _slot0 = slot0; // SLOAD for gas optimization
 
         position = _updatePosition(
@@ -414,6 +426,11 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         bool flippedUpper;
         if (liquidityDelta != 0) {
             uint32 time = _blockTimestamp();
+            //@note
+            //Intension
+            //  snapshot of tickCumulative, secondsPerLiquidityCumulativeX128 of simulated observation at 'time'
+            //Audit
+            //  same simulated observation is also used before observation updating
             (int56 tickCumulative, uint160 secondsPerLiquidityCumulativeX128) = observations.observeSingle(
                 time,
                 0,

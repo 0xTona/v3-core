@@ -20,12 +20,12 @@ library TickBitmap {
     /// @param self The mapping in which to flip the tick
     /// @param tick The tick to flip
     /// @param tickSpacing The spacing between usable ticks
-    function flipTick(
-        mapping(int16 => uint256) storage self,
-        int24 tick,
-        int24 tickSpacing
-    ) internal {
+    function flipTick(mapping(int16 => uint256) storage self, int24 tick, int24 tickSpacing) internal {
         require(tick % tickSpacing == 0); // ensure that the tick is spaced
+        //@note
+        //Intension
+        //  compressed tick = tick / tickSpacing
+        //  1 word = 256 bits = 256 compressed ticks
         (int16 wordPos, uint8 bitPos) = position(tick / tickSpacing);
         uint256 mask = 1 << bitPos;
         self[wordPos] ^= mask;
