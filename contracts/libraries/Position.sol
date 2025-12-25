@@ -13,9 +13,16 @@ library Position {
     struct Info {
         // the amount of liquidity owned by this position
         uint128 liquidity;
+        //@note
+        //Intension
+        //  Snapshot of fee growth inside the tick range at last updated time
+        //      ~ index of share in lending protocol, the actual index (feeGrowthGlobal) change create profit
+        //{
         // fee growth per unit of liquidity as of the last update to liquidity or fees owed
         uint256 feeGrowthInside0LastX128;
         uint256 feeGrowthInside1LastX128;
+        //}
+
         // the fees owed to the position owner in token0/token1
         uint128 tokensOwed0;
         uint128 tokensOwed1;
@@ -50,8 +57,17 @@ library Position {
         uint256 feeGrowthInside0X128,
         uint256 feeGrowthInside1X128
     ) internal {
+        //@note
+        //Intension
+        //  Snapshot of position before update
         Info memory _self = self;
 
+        //@note
+        //Intension
+        //  Calculate new liquidity: liquidityNext = _self.liquidity + liquidityDelta
+        //Follow-up
+        //  liquidityDelta == 0 !=  _self.liquidity -> revert?
+        //{
         uint128 liquidityNext;
         if (liquidityDelta == 0) {
             require(_self.liquidity > 0, 'NP'); // disallow pokes for 0 liquidity positions
@@ -59,7 +75,12 @@ library Position {
         } else {
             liquidityNext = LiquidityMath.addDelta(_self.liquidity, liquidityDelta);
         }
+        //}
 
+        //@note
+        //Intension
+        //  deltaFeeGrowth * lastLiquidity / Q128
+        //{
         // calculate accumulated fees
         uint128 tokensOwed0 = uint128(
             FullMath.mulDiv(feeGrowthInside0X128 - _self.feeGrowthInside0LastX128, _self.liquidity, FixedPoint128.Q128)
@@ -67,7 +88,14 @@ library Position {
         uint128 tokensOwed1 = uint128(
             FullMath.mulDiv(feeGrowthInside1X128 - _self.feeGrowthInside1LastX128, _self.liquidity, FixedPoint128.Q128)
         );
+        //}
 
+        //@note
+        //Intension
+        //  update liquidity, feeGrowthInsideLast, tokensOwed
+        //Assumption
+        //  accrued fee's not automatically redeposited to liquidity
+        //{
         // update the position
         if (liquidityDelta != 0) self.liquidity = liquidityNext;
         self.feeGrowthInside0LastX128 = feeGrowthInside0X128;
@@ -77,5 +105,6 @@ library Position {
             self.tokensOwed0 += tokensOwed0;
             self.tokensOwed1 += tokensOwed1;
         }
+        //}
     }
 }

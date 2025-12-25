@@ -431,6 +431,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
             //  snapshot of tickCumulative, secondsPerLiquidityCumulativeX128 of simulated observation at 'time'
             //Audit
             //  same simulated observation is also used before observation updating
+            //{
             (int56 tickCumulative, uint160 secondsPerLiquidityCumulativeX128) = observations.observeSingle(
                 time,
                 0,
@@ -439,6 +440,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
                 liquidity,
                 slot0.observationCardinality
             );
+            //}
 
             flippedLower = ticks.update(
                 tickLower,
@@ -473,6 +475,10 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
             }
         }
 
+        //@note
+        //Intension
+        //  Accrue fee
+        //{
         (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) = ticks.getFeeGrowthInside(
             tickLower,
             tickUpper,
@@ -480,9 +486,13 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
             _feeGrowthGlobal0X128,
             _feeGrowthGlobal1X128
         );
-
         position.update(liquidityDelta, feeGrowthInside0X128, feeGrowthInside1X128);
+        //}
 
+        //@note
+        //Intension
+        //  liquidityDelta < 0 -> flipped tick's liquidity go from non-zero to zero
+        //{
         // clear any tick data that is no longer needed
         if (liquidityDelta < 0) {
             if (flippedLower) {
@@ -492,6 +502,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
                 ticks.clear(tickUpper);
             }
         }
+        //}
     }
 
     /// @inheritdoc IUniswapV3PoolActions

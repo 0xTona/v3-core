@@ -48,6 +48,9 @@ library Tick {
         int24 minTick = (TickMath.MIN_TICK / tickSpacing) * tickSpacing;
         int24 maxTick = (TickMath.MAX_TICK / tickSpacing) * tickSpacing;
         uint24 numTicks = uint24((maxTick - minTick) / tickSpacing) + 1;
+        //@note
+        //Intension
+        //  total liquidity will never exceed type(uint128).max
         return type(uint128).max / numTicks;
     }
 
@@ -60,6 +63,9 @@ library Tick {
     /// @param feeGrowthGlobal1X128 The all-time global fee growth, per unit of liquidity, in token1
     /// @return feeGrowthInside0X128 The all-time fee growth in token0, per unit of liquidity, inside the position's tick boundaries
     /// @return feeGrowthInside1X128 The all-time fee growth in token1, per unit of liquidity, inside the position's tick boundaries
+    //@note
+    //Assumption
+    //  tickLower < tickUpper
     function getFeeGrowthInside(
         mapping(int24 => Tick.Info) storage self,
         int24 tickLower,
@@ -68,9 +74,28 @@ library Tick {
         uint256 feeGrowthGlobal0X128,
         uint256 feeGrowthGlobal1X128
     ) internal view returns (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) {
+        //@note
+        //Intension
+        //  Reference to ticks[tickLower], ticks[tickUpper]
         Info storage lower = self[tickLower];
         Info storage upper = self[tickUpper];
 
+        //@note
+        //Intension
+        //  Calculate feeGrowthInside according to tickCurrent position
+        //      When tickCurrent >= tick -> tick.feeGrowthOutside is below
+        //      When tickCurrent < tick -> tick.feeGrowthOutside is above
+        //      Visualization:
+        //                                               |------------------------------------------|-----------------------------
+        //          __________tickCurrent______________lower______________________________________upper___________________________
+        //
+        //          ------------------------------------|                                           |-----------------------------
+        //          __________________________________lower_____________tickCurrent_______________upper___________________________
+        //
+        //          ------------------------------------|-------------------------------------------|
+        //          __________________________________lower______________________________________upper___________tickCurrent______
+        //
+        //{
         // calculate fee growth below
         uint256 feeGrowthBelow0X128;
         uint256 feeGrowthBelow1X128;
@@ -95,6 +120,7 @@ library Tick {
 
         feeGrowthInside0X128 = feeGrowthGlobal0X128 - feeGrowthBelow0X128 - feeGrowthAbove0X128;
         feeGrowthInside1X128 = feeGrowthGlobal1X128 - feeGrowthBelow1X128 - feeGrowthAbove1X128;
+        //}
     }
 
     /// @notice Updates a tick and returns true if the tick was flipped from initialized to uninitialized, or vice versa
@@ -148,7 +174,14 @@ library Tick {
         flipped = (liquidityGrossAfter == 0) != (liquidityGrossBefore == 0);
 
         //@note
+        //Intension
+        //  init tick if uninitialized before
+        //      feeGrowthOutsideX128
+        //          = feeGrowthGlobalX128 -> when crossed, the actual fee growth is saved
+        //          tick <= tickCurrent ->
         //Follow-up
+        //  liquidity of ticks that's above the `tick` is also consolidated to be fee growth below the `tick`?
+        //{
         if (liquidityGrossBefore == 0) {
             // by convention, we assume that all growth before a tick was initialized happened _below_ the tick
             if (tick <= tickCurrent) {
@@ -160,6 +193,7 @@ library Tick {
             }
             info.initialized = true;
         }
+        //}
 
         info.liquidityGross = liquidityGrossAfter;
 
@@ -198,6 +232,18 @@ library Tick {
         int56 tickCumulative,
         uint32 time
     ) internal returns (int128 liquidityNet) {
+        //@note
+        //Intension
+        //   Fee growth outside update when tick is crossed
+        //      Don't need to update each position's feeGrowthInside
+        //   Visualization:
+        //             <--swap--                                        ------------ (it's fee accrue above the tick)
+        //                                                 |           |
+        //          |            |                         |           '           '
+        //          |            |         -->             |           '           '
+        //          |            |                         |           '           '
+        //    ____tick______prevTick___             ____curTick______tick______prevTick___
+        //{
         Tick.Info storage info = self[tick];
         info.feeGrowthOutside0X128 = feeGrowthGlobal0X128 - info.feeGrowthOutside0X128;
         info.feeGrowthOutside1X128 = feeGrowthGlobal1X128 - info.feeGrowthOutside1X128;
@@ -205,5 +251,6 @@ library Tick {
         info.tickCumulativeOutside = tickCumulative - info.tickCumulativeOutside;
         info.secondsOutside = time - info.secondsOutside;
         liquidityNet = info.liquidityNet;
+        //}
     }
 }
