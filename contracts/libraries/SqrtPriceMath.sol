@@ -74,21 +74,19 @@ library SqrtPriceMath {
         // if we're adding (subtracting), rounding down requires rounding the quotient down (up)
         // in both cases, avoid a mulDiv for most inputs
         if (add) {
-            uint256 quotient =
-                (
-                    amount <= type(uint160).max
-                        ? (amount << FixedPoint96.RESOLUTION) / liquidity
-                        : FullMath.mulDiv(amount, FixedPoint96.Q96, liquidity)
-                );
+            uint256 quotient = (
+                amount <= type(uint160).max
+                    ? (amount << FixedPoint96.RESOLUTION) / liquidity
+                    : FullMath.mulDiv(amount, FixedPoint96.Q96, liquidity)
+            );
 
             return uint256(sqrtPX96).add(quotient).toUint160();
         } else {
-            uint256 quotient =
-                (
-                    amount <= type(uint160).max
-                        ? UnsafeMath.divRoundingUp(amount << FixedPoint96.RESOLUTION, liquidity)
-                        : FullMath.mulDivRoundingUp(amount, FixedPoint96.Q96, liquidity)
-                );
+            uint256 quotient = (
+                amount <= type(uint160).max
+                    ? UnsafeMath.divRoundingUp(amount << FixedPoint96.RESOLUTION, liquidity)
+                    : FullMath.mulDivRoundingUp(amount, FixedPoint96.Q96, liquidity)
+            );
 
             require(sqrtPX96 > quotient);
             // always fits 160 bits
@@ -158,11 +156,24 @@ library SqrtPriceMath {
     ) internal pure returns (uint256 amount0) {
         if (sqrtRatioAX96 > sqrtRatioBX96) (sqrtRatioAX96, sqrtRatioBX96) = (sqrtRatioBX96, sqrtRatioAX96);
 
+        //@note
+        //Intension
+        //  numerator1 = liquidity * 2^96
+        //  numerator2 = sqrtRatioB - sqrtRatioA
         uint256 numerator1 = uint256(liquidity) << FixedPoint96.RESOLUTION;
         uint256 numerator2 = sqrtRatioBX96 - sqrtRatioAX96;
 
+        //@note
+        //Intension
+        //  Ensure sqrtRatioAX96 > 0 to prevent division by zero
+        //  sqrtRatioBX96 > sqrtRatioAX96 -> this check is sufficient to prevent division by zero
         require(sqrtRatioAX96 > 0);
 
+        //@note
+        //Intension
+        //  delta0 = liquidity * (sqrtRatioB - sqrtRatioA) / (sqrtRatioB * sqrtRatioA)
+        //Audit
+        //  Round douwn to zero
         return
             roundUp
                 ? UnsafeMath.divRoundingUp(
@@ -203,6 +214,10 @@ library SqrtPriceMath {
         uint160 sqrtRatioBX96,
         int128 liquidity
     ) internal pure returns (int256 amount0) {
+        //@note
+        //Intension
+        //   liquidity < 0 -> remove liquidity -> round down -> user get less token0
+        //   liquidity > 0 -> add liquidity -> round up -> user pay more token0
         return
             liquidity < 0
                 ? -getAmount0Delta(sqrtRatioAX96, sqrtRatioBX96, uint128(-liquidity), false).toInt256()

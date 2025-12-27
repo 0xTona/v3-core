@@ -98,6 +98,9 @@ library Oracle {
     /// @param cardinalityNext The new length of the oracle array, independent of population
     /// @return indexUpdated The new index of the most recently written element in the oracle array
     /// @return cardinalityUpdated The new cardinality of the oracle array
+    //@note
+    //Assumption
+    //  index, observationCardinality, observationCardinalityNext is updated after
     function write(
         Observation[65535] storage self,
         uint16 index,
@@ -107,10 +110,18 @@ library Oracle {
         uint16 cardinality,
         uint16 cardinalityNext
     ) internal returns (uint16 indexUpdated, uint16 cardinalityUpdated) {
+        //@note
+        //Intension
+        //  Snapshot the last observation
         Observation memory last = self[index];
 
+        //@note
+        //Assumption
+        //  write new observation only if time has advanced
+        //{
         // early return if we've already written an observation this block
         if (last.blockTimestamp == blockTimestamp) return (index, cardinality);
+        //}
 
         // if the conditions are right, we can bump the cardinality
         if (cardinalityNext > cardinality && index == (cardinality - 1)) {

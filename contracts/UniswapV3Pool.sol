@@ -349,6 +349,9 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         //  snapshot of slot0 before modification
         Slot0 memory _slot0 = slot0; // SLOAD for gas optimization
 
+        //@note
+        //Intension
+        //  Update lower & upper tick with liquidityDelta
         position = _updatePosition(
             params.owner,
             params.tickLower,
@@ -357,6 +360,15 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
             _slot0.tick
         );
 
+        //@note
+        //Intension
+        //  Calculate amount0, amount1 user must provide for liquidityDelta
+        //  Visualization:
+        //         full token0             token0 & token1            full token1
+        //      __________________lower_______________________upper____________________
+        //Assumption
+        //  liquidityDelta = 0 -> amount0 = amount1 = 0
+        //{
         if (params.liquidityDelta != 0) {
             if (_slot0.tick < params.tickLower) {
                 // current tick is below the passed range; liquidity can only become in range by crossing from left to
@@ -370,6 +382,10 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
                 // current tick is inside the passed range
                 uint128 liquidityBefore = liquidity; // SLOAD for gas optimization
 
+                //@note
+                //Audit
+                //  block.timestamp behavior
+                //{
                 // write an oracle entry
                 (slot0.observationIndex, slot0.observationCardinality) = observations.write(
                     _slot0.observationIndex,
@@ -379,6 +395,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
                     _slot0.observationCardinality,
                     _slot0.observationCardinalityNext
                 );
+                //}
 
                 amount0 = SqrtPriceMath.getAmount0Delta(
                     _slot0.sqrtPriceX96,
@@ -402,6 +419,7 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
                 );
             }
         }
+        //}
     }
 
     /// @dev Gets and updates a position with the given liquidity delta
@@ -531,6 +549,9 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         uint256 balance1Before;
         if (amount0 > 0) balance0Before = balance0();
         if (amount1 > 0) balance1Before = balance1();
+        //@note
+        //Assumption
+        //  minter must be a contract with uniswapV3MintCallback()
         IUniswapV3MintCallback(msg.sender).uniswapV3MintCallback(amount0, amount1, data);
         if (amount0 > 0) require(balance0Before.add(amount0) <= balance0(), 'M0');
         if (amount1 > 0) require(balance1Before.add(amount1) <= balance1(), 'M1');
