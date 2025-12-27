@@ -11,13 +11,14 @@ library TransferHelper {
     /// @param token The contract address of the token which will be transferred
     /// @param to The recipient of the transfer
     /// @param value The value of the transfer
-    function safeTransfer(
-        address token,
-        address to,
-        uint256 value
-    ) internal {
-        (bool success, bytes memory data) =
-            token.call(abi.encodeWithSelector(IERC20Minimal.transfer.selector, to, value));
+    function safeTransfer(address token, address to, uint256 value) internal {
+        (bool success, bytes memory data) = token.call(
+            abi.encodeWithSelector(IERC20Minimal.transfer.selector, to, value)
+        );
+        //@note
+        //Follow-up
+        //  A) Why checking data.length == 0?
+        //      some tokens don't return a value (USDT, BNB,...) (https://github.com/d-xo/weird-erc20?tab=readme-ov-file#missing-return-values)
         require(success && (data.length == 0 || abi.decode(data, (bool))), 'TF');
     }
 }

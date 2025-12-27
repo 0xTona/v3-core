@@ -567,11 +567,21 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         uint128 amount0Requested,
         uint128 amount1Requested
     ) external override lock returns (uint128 amount0, uint128 amount1) {
+        //@note
+        //Audit
+        //  Miss checkTicks?
+        //{
         // we don't need to checkTicks here, because invalid positions will never have non-zero tokensOwed{0,1}
         Position.Info storage position = positions.get(msg.sender, tickLower, tickUpper);
+        //}
 
+        //@note
+        //Intension
+        //  amount = min(requested amount, owed amount)
+        //{
         amount0 = amount0Requested > position.tokensOwed0 ? position.tokensOwed0 : amount0Requested;
         amount1 = amount1Requested > position.tokensOwed1 ? position.tokensOwed1 : amount1Requested;
+        //}
 
         if (amount0 > 0) {
             position.tokensOwed0 -= amount0;

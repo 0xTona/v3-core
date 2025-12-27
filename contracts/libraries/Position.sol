@@ -43,6 +43,7 @@ library Position {
         //@note
         //Assumption
         // Each user can have many positions with different tick ranges
+        // valid tick
         position = self[keccak256(abi.encodePacked(owner, tickLower, tickUpper))];
     }
 
