@@ -601,14 +601,27 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
             })
         );
 
+        //@note
+        //Intension
+        //  amount0Int, amount1Int are <= 0 -> amount0, amount1 are >= 0
+        //Audit
+        //  N) negate type.min
+        //{
         amount0 = uint256(-amount0Int);
         amount1 = uint256(-amount1Int);
+        //}
 
         if (amount0 > 0 || amount1 > 0) {
+            //@note
+            //Follow-up
+            //  A) Why using tuple assignment here?
+            //      save gas (https://recash.tech/2024/03/03/smart-contract-mastery-solidity-patterns-for-enhanced-gas-efficiency/#:~:text=optimizing%20gas%20usage.-,single%20line%20swap,-In%20Solidity%20and)
+            //{
             (position.tokensOwed0, position.tokensOwed1) = (
                 position.tokensOwed0 + uint128(amount0),
                 position.tokensOwed1 + uint128(amount1)
             );
+            //}
         }
 
         emit Burn(msg.sender, tickLower, tickUpper, amount, amount0, amount1);
