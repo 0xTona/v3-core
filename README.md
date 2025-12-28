@@ -1,6 +1,5 @@
 ## Summary
-
-## Diff
+![](summary.svg)
 
 ## Resource
 - [Cyfrin Uniswap V3 Course](https://updraft.cyfrin.io/courses/uniswap-v3)
