@@ -11,8 +11,15 @@ library BitMath {
     /// @param x the value for which to compute the most significant bit, must be greater than 0
     /// @return r the index of the most significant bit
     function mostSignificantBit(uint256 x) internal pure returns (uint8 r) {
+        //@note
+        //Assumption
+        //  At least 1 bit set
         require(x > 0);
 
+        //@note
+        //Intension
+        //  Binary search
+        //{
         if (x >= 0x100000000000000000000000000000000) {
             x >>= 128;
             r += 128;
@@ -42,6 +49,7 @@ library BitMath {
             r += 2;
         }
         if (x >= 0x2) r += 1;
+        //}
     }
 
     /// @notice Returns the index of the least significant bit of the number,
@@ -51,8 +59,15 @@ library BitMath {
     /// @param x the value for which to compute the least significant bit, must be greater than 0
     /// @return r the index of the least significant bit
     function leastSignificantBit(uint256 x) internal pure returns (uint8 r) {
+        //@note
+        //Assumption
+        //  At least 1 bit set
         require(x > 0);
 
+        //@note
+        //Intension
+        //  Binary search
+        //{
         r = 255;
         if (x & type(uint128).max > 0) {
             r -= 128;
@@ -90,5 +105,6 @@ library BitMath {
             x >>= 2;
         }
         if (x & 0x1 > 0) r -= 1;
+        //}
     }
 }

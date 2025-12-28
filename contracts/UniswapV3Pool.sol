@@ -60,14 +60,16 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         int24 tick;
         // the most-recently updated index of the observations array
         uint16 observationIndex;
-        // the current maximum number of observations that are being stored
         //@note
         //Intension
         //  Number of activated observations
         //Assumption
         //  observationCardinality <= 65535
+        //{
+        // the current maximum number of observations that are being stored
         uint16 observationCardinality;
-        // the next maximum number of observations to store, triggered in observations.write
+        //}
+
         //@note
         //Intension
         //  Preallocated observations but not activated yet (observation.initialized == false)
@@ -76,10 +78,20 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         //      increaseObservationCardinalityNext(): increase number of observations if someone's willing to pay gas
         //Assumption
         //  observationCardinalityNext <= 65535
+        //{
+        // the next maximum number of observations to store, triggered in observations.write
         uint16 observationCardinalityNext;
+        //}
+
+        //@note
+        //Intension
+        //  [oneToZero fee(4 bit)][zeroToOne fee(4 bit)]
+        //{
         // the current protocol fee as a percentage of the swap fee taken on withdrawal
         // represented as an integer denominator (1/x)%
         uint8 feeProtocol;
+        //}
+
         // whether the pool is locked
         bool unlocked;
     }
@@ -687,6 +699,11 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
         uint256 feeAmount;
     }
 
+    //@note
+    //Intension
+    //  amountSpecified
+    //      amountSpecified > 0: exact input
+    //      amountSpecified < 0: exact output
     /// @inheritdoc IUniswapV3PoolActions
     function swap(
         address recipient,
@@ -697,16 +714,40 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
     ) external override noDelegateCall returns (int256 amount0, int256 amount1) {
         require(amountSpecified != 0, 'AS');
 
+        //@note
+        //Intension
+        //  Snapshot of slot0
         Slot0 memory slot0Start = slot0;
 
         require(slot0Start.unlocked, 'LOK');
+        //@note
+        //Intension
+        //  Visualization:
+        //
+        //    token1
+        //      |
+        // upper| -
+        //      |    -
+        //  0f1 |       -
+        //      |       |  -
+        //  cur |       |>>>> * <<<<|
+        //      |                -  |
+        //  1f0 |                   -
+        //      |                     -
+        // lower|                        -
+        //      |____________________________ token0
+        //{
         require(
             zeroForOne
                 ? sqrtPriceLimitX96 < slot0Start.sqrtPriceX96 && sqrtPriceLimitX96 > TickMath.MIN_SQRT_RATIO
                 : sqrtPriceLimitX96 > slot0Start.sqrtPriceX96 && sqrtPriceLimitX96 < TickMath.MAX_SQRT_RATIO,
             'SPL'
         );
+        //}
 
+        //@note
+        //Follow-up
+        //  Why don't use modifier lock()?
         slot0.unlocked = false;
 
         SwapCache memory cache = SwapCache({
@@ -755,9 +796,15 @@ contract UniswapV3Pool is IUniswapV3Pool, NoDelegateCall {
             // compute values to swap to the target tick, price limit, or point where input/output amount is exhausted
             (state.sqrtPriceX96, step.amountIn, step.amountOut, step.feeAmount) = SwapMath.computeSwapStep(
                 state.sqrtPriceX96,
+                //@note
+                //Intension
+                // 1f0 -> max(priceNext, priceLimit)
+                // 0f1 -> min(priceNext, priceLimit)
+                //{
                 (zeroForOne ? step.sqrtPriceNextX96 < sqrtPriceLimitX96 : step.sqrtPriceNextX96 > sqrtPriceLimitX96)
                     ? sqrtPriceLimitX96
                     : step.sqrtPriceNextX96,
+                //}
                 state.liquidity,
                 state.amountSpecifiedRemaining,
                 fee

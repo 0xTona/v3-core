@@ -12,6 +12,10 @@ library TickBitmap {
     /// @return wordPos The key in the mapping containing the word in which the bit is stored
     /// @return bitPos The bit position in the word where the flag is stored
     function position(int24 tick) private pure returns (int16 wordPos, uint8 bitPos) {
+        //@note
+        //Intension
+        //  compressed tick = tick / tickSpacing
+        //  1 word = 256 bits = 256 compressed ticks
         wordPos = int16(tick >> 8);
         bitPos = uint8(tick % 256);
     }
@@ -22,10 +26,7 @@ library TickBitmap {
     /// @param tickSpacing The spacing between usable ticks
     function flipTick(mapping(int16 => uint256) storage self, int24 tick, int24 tickSpacing) internal {
         require(tick % tickSpacing == 0); // ensure that the tick is spaced
-        //@note
-        //Intension
-        //  compressed tick = tick / tickSpacing
-        //  1 word = 256 bits = 256 compressed ticks
+
         (int16 wordPos, uint8 bitPos) = position(tick / tickSpacing);
         uint256 mask = 1 << bitPos;
         self[wordPos] ^= mask;
@@ -50,8 +51,17 @@ library TickBitmap {
 
         if (lte) {
             (int16 wordPos, uint8 bitPos) = position(compressed);
+            //@note
+            //Intension
+            //  Skip bitPos & right ticks
+            //      (1 << bitPos) - 1 = 11111111
+            //      (1 << bitPos)     = 00010000
+            //      ----------------------------
+            //      mask              = 00001111
+            //{
             // all the 1s at or to the right of the current bitPos
             uint256 mask = (1 << bitPos) - 1 + (1 << bitPos);
+            //}
             uint256 masked = self[wordPos] & mask;
 
             // if there are no initialized ticks to the right of or at the current tick, return rightmost in the word

@@ -37,8 +37,14 @@ library SqrtPriceMath {
 
         if (add) {
             uint256 product;
+            //@note
+            //Intension
+            //  If not -> overflow
             if ((product = amount * sqrtPX96) / amount == sqrtPX96) {
                 uint256 denominator = numerator1 + product;
+                //@note
+                //Intension
+                //  If not -> overflow
                 if (denominator >= numerator1)
                     // always fits in 160 bits
                     return uint160(FullMath.mulDivRoundingUp(numerator1, sqrtPX96, denominator));
@@ -47,10 +53,15 @@ library SqrtPriceMath {
             return uint160(UnsafeMath.divRoundingUp(numerator1, (numerator1 / sqrtPX96).add(amount)));
         } else {
             uint256 product;
+            //@note
+            //Intension
+            //  numerator1 < product -> Insufficient liquidity
+            //{
             // if the product overflows, we know the denominator underflows
             // in addition, we must check that the denominator does not underflow
             require((product = amount * sqrtPX96) / amount == sqrtPX96 && numerator1 > product);
             uint256 denominator = numerator1 - product;
+            //}
             return FullMath.mulDivRoundingUp(numerator1, sqrtPX96, denominator).toUint160();
         }
     }
